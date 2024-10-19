@@ -1,0 +1,15 @@
+project_prefix     = "prefix"
+ssh_public_key     = "<ssh public key>"
+
+# AWS service-plm
+aws_access_key      = "<access key>"
+aws_secret_key      = "<access secret>"
+
+aws_owner_tag       = "user@email.com"
+
+aws_ami_name        = "f5xc-ce-9.2024.22-20240917135102"
+
+# <tenant>.prod
+f5xc_api_url      = "https://<tenant>.console.ves.volterra.io/api"
+f5xc_api_token    = "<f5xc api token>"
+f5xc_tenant       = "<tenant id>"

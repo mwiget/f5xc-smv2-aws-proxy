@@ -1,0 +1,11 @@
+.env
+__pycache__
+.terraform*
+*.log
+*.json
+myenv
+TODO.md
+old
+*.tfstate*
+*.tfvars
+*ssh_key*
