@@ -69,7 +69,7 @@ total 16
 ```
 
 
-test proxy from either instance with:
+test proxy from either instance via curl and look for `CN=Self-signed CA`:
 
 ```
 # curl --proxy http://10.1.1.100:3128 https://ipinfo.io --insecure -v
