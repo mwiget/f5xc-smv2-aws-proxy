@@ -14,19 +14,28 @@ users:
 package_update: true
 packages:
   - net-tools
-  - squid
-  - docker.io
-
-# create the docker group
-groups:
-  - docker
-
-# Add default auto created user to docker group
-system_info:
-  default_user:
-    groups: [docker]
+  - openssl
+  - squid-openssl
 
 write_files:
+  - path: /root/create-private-ca.sh
+    permissions: 0755
+    owner: root
+    content: |
+        #!/bin/bash
+
+        mkdir -p /etc/squid/cert
+        cd /etc/squid/cert
+        openssl genrsa -out ca.key 2048
+        openssl req -x509 -new -nodes -sha256 -days 365 -key ca.key -out ca.pem -subj '/C=US/ST=SanJose/O=IT/CN=Self-signed CA'
+        openssl x509 -in ca.pem -outform DER -out ca.der
+        openssl dhparam -outform PEM -out dhparam.pem 2048
+        chown -R proxy:proxy /etc/squid/cert
+        chmod 700 /etc/squid/cert
+
+        /usr/lib/squid/security_file_certgen -c -s /var/spool/squid/ssl_db -M 4MB
+        chown -R proxy:proxy /var/spool/squid/ssl_db/
+
   - path: /etc/squid/squid.conf
     permissions: 0644
     owner: root
@@ -61,7 +70,16 @@ write_files:
         include /etc/squid/conf.d/*.conf
 
         http_access allow all
-        http_port 3128
+
+        acl intermediate_fetching transaction_initiator certificate-fetching
+        http_access allow intermediate_fetching
+
+        sslcrtd_program /usr/lib/squid/security_file_certgen -s /var/spool/squid/ssl_db -M 4MB
+        sslcrtd_children 8 startup=1 idle=1
+        # sslproxy_cert_error allow all
+        ssl_bump stare all
+
+        http_port 3128 tcpkeepalive=60,30,3 ssl-bump generate-host-certificates=on dynamic_cert_mem_cache_size=4MB cert=/etc/squid/cert/ca.pem key=/etc/squid/cert/ca.key cipher=HIGH:MEDIUM:!LOW:!RC4:!SEED:!IDEA:!3DES:!MD5:!EXP:!PSK:!DSS options=NO_TLSv1,NO_SSLv3 tls-dh=prime256v1:/etc/squid/cert/dhparam.pem
 
         coredump_dir /var/spool/squid
 
@@ -73,8 +91,9 @@ write_files:
         refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
         refresh_pattern .		0	20%	4320
 
+        # TLS and SSL options
+        tls_outgoing_options cipher=HIGH:!RC4:!MD5:!aNULL:!eNULL
+
 runcmd:
+- [ sh, "/root/create-private-ca.sh" ]
 - [ sh, -c, systemctl restart squid.service ]
-- [ sh, -c, docker run --restart always -p 80:80 -e F5DEMO_APP=website -e F5DEMO_APP=text f5devcentral/f5-demo-httpd:nginx ]
-
-
